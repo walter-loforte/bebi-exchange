@@ -1,6 +1,6 @@
-const VERSION='20260930-3';
+const VERSION='20260930-4';
 const CACHE='cambio-shell-'+VERSION;
-const FILES=['./','./index.html','./style.css','./app.js','./updates.js','./price-reader.js','./photo.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png'];
+const FILES=['./','./index.html','./style.css','./app.js','./updates.js','./price-reader.js','./photo.js','./amount-reader.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const cache=await caches.open(CACHE);
   await cache.addAll(FILES.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})));
