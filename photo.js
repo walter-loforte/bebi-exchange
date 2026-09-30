@@ -54,11 +54,16 @@
   el('read-amount').onclick=async()=>{
     const current=++job;busy(true);el('photo-review').hidden=true;el('scan-progress').removeAttribute('value');el('scanner-status').textContent='Preparando el recorte…';let timer;
     try{
-      const prepared=AmountReader.prepare(image,box);
+      let prepared=AmountReader.prepare(image,box);
       const operation=(async()=>{
         const T=await library();if(current!==job)return;
         const instance=await T.createWorker('eng',1,{workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/worker.min.js',corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0',langPath:'https://tessdata.projectnaptha.com/4.0.0'});
         if(current!==job){await instance.terminate();return;}worker=instance;
+        el('scanner-status').textContent='Separando el monto de letras y signos...';
+        await instance.setParameters({tessedit_char_whitelist:'',tessedit_pageseg_mode:'7'});
+        const detection=await instance.recognize(prepared.gray,{},{blocks:true});
+        if(current!==job)return;
+        prepared=AmountReader.isolate(prepared,detection.data);
         const readings=[];
         for(const [i,pass]of [[prepared.gray,'7'],[prepared.gray,'13'],[prepared.binary,'13']].entries()){
           if(current!==job)return;el('scanner-status').textContent=`Leyendo solo el monto… ${i+1}/3`;el('scan-progress').value=i*33;

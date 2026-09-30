@@ -1,5 +1,15 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 global.PriceReader=require('../price-reader.js');require('../amount-reader.js');
+function detection(words){return {blocks:[{paragraphs:[{lines:[{words:words.map((text,w)=>({symbols:[...text].map((text,i)=>({text,bbox:{x0:w*100+i*10,y0:10,x1:w*100+i*10+9,y1:30}}))}))}]}]}]};}
+test('excluye letras y signo peso del recorte antes del OCR numérico',()=>{
+  assert.deepEqual(AmountReader.numericBox(detection(['AHORA:','$69990'])),{x0:110,y0:10,x1:159,y1:30});
+  assert.deepEqual(AmountReader.numericBox(detection(['USD49.90'])),{x0:30,y0:10,x1:79,y1:30});
+});
+test('no elige entre dos precios ni elimina letras internas para inventar un monto',()=>{
+  assert.equal(AmountReader.numericBox(detection(['119990','$69990'])),null);
+  assert.equal(AmountReader.numericBox(detection(['69O90'])),null);
+  assert.equal(AmountReader.numericBox(detection(['AHORA','$'])),null);
+});
 test('lee solo montos, sin necesitar un símbolo o una moneda',()=>{
   for(const [text,value] of [['69990',69990],['69.990',69990],['69 990',69990],['49.90',49.9],['25.000,50',25000.5],['1,299.99',1299.99]])assert.equal(AmountReader.amount(text),value);
 });

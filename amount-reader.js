@@ -47,5 +47,32 @@
     for(const reading of readings){const value=amount(reading.text);if(value===null)continue;const item=groups.get(value)||{amount:value,votes:0,confidence:0,score:0};const confidence=Math.max(0,Math.min(100,reading.confidence||0));item.votes++;item.score+=(confidence/100)**2;item.confidence=Math.max(item.confidence,confidence);groups.set(value,item);}
     return [...groups.values()].sort((a,b)=>b.score-a.score||b.votes-a.votes||b.confidence-a.confidence);
   }
-  root.AmountReader={prepare,rank,amount};
+  function numericBox(data){
+    const runs=[];
+    for(const block of data.blocks||[])for(const paragraph of block.paragraphs||[])for(const line of paragraph.lines||[])for(const word of line.words||[]){
+      const symbols=word.symbols||[],text=symbols.map(s=>s.text).join('');
+      // Reject letters inside a number: removing them would invent a different price.
+      if(/\d[^\d.,\s]+\d/.test(text))continue;
+      const digits=symbols.filter(s=>/^[0-9.,]$/.test(s.text));
+      if(!digits.some(s=>/\d/.test(s.text)))continue;
+      if(amount(digits.map(s=>s.text).join(''))===null)continue;
+      const tops=digits.filter(s=>/\d/.test(s.text)).map(s=>s.bbox.y0).sort((a,b)=>a-b);
+      const typicalTop=tops[Math.floor(tops.length/2)];
+      runs.push({x0:Math.min(...digits.map(s=>s.bbox.x0)),y0:Math.max(Math.min(...digits.map(s=>s.bbox.y0)),typicalTop-12),x1:Math.max(...digits.map(s=>s.bbox.x1)),y1:Math.max(...digits.map(s=>s.bbox.y1))});
+    }
+    // Multiple prices require a tighter crop instead of silently choosing one.
+    return runs.length===1?runs[0]:null;
+  }
+  function isolate(prepared,data){
+    const box=numericBox(data);
+    if(!box)throw Error('No pudimos separar un único monto. Encuadrá el precio actual más de cerca.');
+    const result={};
+    for(const key of ['gray','binary']){
+      const source=prepared[key],canvas=document.createElement('canvas');
+      const x=Math.max(0,box.x0),y=Math.max(0,box.y0),w=Math.min(source.width,box.x1)-x,h=Math.min(source.height,box.y1)-y;
+      canvas.width=w+48;canvas.height=h+48;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(source,x,y,w,h,24,24,w,h);result[key]=canvas;
+    }
+    return result;
+  }
+  root.AmountReader={prepare,rank,amount,numericBox,isolate};
 })(globalThis);
