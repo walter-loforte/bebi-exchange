@@ -1,5 +1,15 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 global.PriceReader=require('../price-reader.js');require('../amount-reader.js');
+test('no completa un monto si una lectura agrega un uno o conserva un signo',()=>{
+  assert.equal(AmountReader.reliable([{text:'169990',confidence:95},{text:'69990',confidence:90},{text:'69990',confidence:90}]),null);
+  assert.equal(AmountReader.amount('$69990'),null);
+  assert.equal(AmountReader.reliable([{text:'12990',confidence:90},{text:'12990',confidence:92}]).amount,12990);
+});
+test('incluye contexto a la izquierda sin salir de la foto ni modificar el borde derecho',()=>{
+  const b=AmountReader.contextBox({x:.5,y:.3,w:.2,h:.1});
+  assert.equal(b.x,.45);assert.ok(Math.abs(b.x+b.w-.7)<1e-9);
+  assert.equal(AmountReader.contextBox({x:.01,y:0,w:.2,h:.2}).x,0);
+});
 function detection(words){return {blocks:[{paragraphs:[{lines:[{words:words.map((text,w)=>({symbols:[...text].map((text,i)=>({text,bbox:{x0:w*100+i*10,y0:10,x1:w*100+i*10+9,y1:30}}))}))}]}]}]};}
 test('excluye letras y signo peso del recorte antes del OCR numérico',()=>{
   assert.deepEqual(AmountReader.numericBox(detection(['AHORA:','$69990'])),{x0:110,y0:10,x1:159,y1:30});

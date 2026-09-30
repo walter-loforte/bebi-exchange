@@ -35,7 +35,7 @@
     return {gray:output,binary,angle};
   }
   function amount(text){
-    const raw=String(text).trim().replace(/\$/g,'').trim();
+    const raw=String(text).trim();
     if(/[\r\n]/.test(raw))return null;
     if(/\s/.test(raw)&&!/^\d{1,3}(?:[ \t]\d{3})+(?:[.,]\d{1,2})?$/.test(raw))return null;
     const cleaned=raw.replace(/\s/g,'');
@@ -53,7 +53,9 @@
       const symbols=word.symbols||[],text=symbols.map(s=>s.text).join('');
       // Reject letters inside a number: removing them would invent a different price.
       if(/\d[^\d.,\s]+\d/.test(text))continue;
-      const digits=symbols.filter(s=>/^[0-9.,]$/.test(s.text));
+      const first=symbols.findIndex(s=>/^\d$/.test(s.text));
+      const last=symbols.findLastIndex(s=>/^\d$/.test(s.text));
+      const digits=symbols.slice(first,last+1).filter(s=>/^[0-9.,]$/.test(s.text));
       if(!digits.some(s=>/\d/.test(s.text)))continue;
       if(amount(digits.map(s=>s.text).join(''))===null)continue;
       const tops=digits.filter(s=>/\d/.test(s.text)).map(s=>s.bbox.y0).sort((a,b)=>a-b);
@@ -74,5 +76,13 @@
     }
     return result;
   }
-  root.AmountReader={prepare,rank,amount,numericBox,isolate};
+  function contextBox(box){
+    const margin=Math.min(.05,box.w*.35),x=Math.max(0,box.x-margin);
+    return {...box,x,w:Math.min(1,box.x+box.w)-x};
+  }
+  function reliable(readings){
+    const candidates=rank(readings);
+    return candidates.length===1&&candidates[0].votes>=2&&candidates[0].confidence>=65?candidates[0]:null;
+  }
+  root.AmountReader={prepare,rank,amount,numericBox,isolate,contextBox,reliable};
 })(globalThis);

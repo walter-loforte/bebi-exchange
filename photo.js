@@ -43,9 +43,9 @@
     libraryPromise=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js';const timer=setTimeout(()=>{script.remove();libraryPromise=null;reject(Error('No pudimos cargar el lector. Revisá tu conexión.'));},20000);script.onload=()=>{clearTimeout(timer);resolve(window.Tesseract);};script.onerror=()=>{clearTimeout(timer);script.remove();libraryPromise=null;reject(Error('No pudimos cargar el lector. Revisá tu conexión.'));};document.head.append(script);});return libraryPromise;
   }
   function review(readings,prepared){
-    const candidates=AmountReader.rank(readings);el('photo-amount').value=candidates[0]?candidates[0].amount.toFixed(2).replace('.',','):'';
-    const select=el('photo-candidates');select.replaceChildren();for(const [i,c]of candidates.entries()){const option=document.createElement('option');option.value=i;option.textContent=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(c.amount)+' '+scanCurrency;select.append(option);}
-    select.onchange=()=>{el('photo-amount').value=candidates[Number(select.value)].amount.toFixed(2).replace('.',',');};el('candidate-field').hidden=candidates.length<2;
+    const candidates=AmountReader.rank(readings),reliable=AmountReader.reliable(readings);el('photo-amount').value=reliable?reliable.amount.toFixed(2).replace('.',','):'';
+    const select=el('photo-candidates');select.replaceChildren();const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Elegir un monto para revisar';placeholder.selected=true;placeholder.disabled=true;select.append(placeholder);for(const [i,c]of candidates.entries()){const option=document.createElement('option');option.value=i;option.textContent=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(c.amount)+' '+scanCurrency;select.append(option);}
+    select.onchange=()=>{el('photo-amount').value=candidates[Number(select.value)].amount.toFixed(2).replace('.',',');};el('candidate-field').hidden=!candidates.length||!!reliable;
     const agrees=candidates[0]?.votes>=2,clear=agrees&&candidates.length===1&&candidates[0].confidence>=65;
     el('scanner-status').textContent=!candidates.length?'No pudimos leer un monto. Ajustá el recuadro o escribilo abajo.':clear?'Monto leído. Comparalo con el recorte antes de convertir.':'Las lecturas no son concluyentes. Revisá el monto o ajustá el recuadro.';
     el('crop-preview').src=prepared.gray.toDataURL('image/png');el('photo-error').hidden=true;el('photo-review').hidden=false;
@@ -54,7 +54,7 @@
   el('read-amount').onclick=async()=>{
     const current=++job;busy(true);el('photo-review').hidden=true;el('scan-progress').removeAttribute('value');el('scanner-status').textContent='Preparando el recorte…';let timer;
     try{
-      let prepared=AmountReader.prepare(image,box);
+      let prepared=AmountReader.prepare(image,AmountReader.contextBox(box));
       const operation=(async()=>{
         const T=await library();if(current!==job)return;
         const instance=await T.createWorker('eng',1,{workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/worker.min.js',corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0',langPath:'https://tessdata.projectnaptha.com/4.0.0'});
@@ -67,7 +67,7 @@
         const readings=[];
         for(const [i,pass]of [[prepared.gray,'7'],[prepared.gray,'13'],[prepared.binary,'13']].entries()){
           if(current!==job)return;el('scanner-status').textContent=`Leyendo solo el monto… ${i+1}/3`;el('scan-progress').value=i*33;
-          await instance.setParameters({tessedit_char_whitelist:'0123456789.,',tessedit_pageseg_mode:pass[1]});
+          await instance.setParameters({tessedit_char_whitelist:'',tessedit_pageseg_mode:pass[1]});
           const {data}=await instance.recognize(pass[0]);readings.push({text:data.text,confidence:data.confidence});
         }
         if(current===job)review(readings,prepared);
