@@ -1,4 +1,4 @@
-const VERSION='20260930-7';
+const VERSION='20260930-8';
 const CACHE='cambio-shell-'+VERSION;
 const FILES=['./','./index.html','./style.css','./app.js','./product-config.js','./product-search.js','./product.js','./updates.js','./price-reader.js','./photo.js','./amount-reader.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
