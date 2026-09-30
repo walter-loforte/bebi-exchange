@@ -1,5 +1,5 @@
 (() => {
-  const VERSION='20260930-6', button=document.getElementById('update-app'),status=document.getElementById('app-update-status');
+  const VERSION='20260930-7', button=document.getElementById('update-app'),status=document.getElementById('app-update-status');
   let registration=null,checking=false,lastCheck=0;
   function available(){status.textContent='Hay una nueva versión disponible.';button.textContent='Actualizar app';button.dataset.available='true';}
   async function check(manual=false){
